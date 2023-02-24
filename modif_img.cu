@@ -216,10 +216,23 @@ __global__ void sobel(unsigned int *d_img, unsigned int *d_tmp, int width, int h
   }
 }
 
+// Negative Filter
+__global__ void negative(unsigned int *d_img, unsigned int *d_tmp, int width, int height) {
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if(idy < height && idx < width){
+    int ida = ((idy * width) + idx) * 3;
+    d_img[ida + 0] = 255 - d_tmp[ida];
+    d_img[ida + 1] = 255 - d_tmp[ida + 1];
+    d_img[ida + 2] = 255 - d_tmp[ida + 2];
+  }
+}
+
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel\n", argv[0]), 1;
+    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative\n", argv[0]), 1;
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
@@ -295,6 +308,8 @@ int main (int argc , char** argv)
     }
     else if (strcmp(argv[i], "sobel") == 0)
       sobel<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+    else if (strcmp(argv[i], "negative") == 0)
+      negative<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
     else
       printf("Unreconized filter : %s\n", argv[i]);
 
