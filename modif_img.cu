@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "FreeImage.h"
 
 #define WIDTH 1920
@@ -10,7 +12,7 @@
 
 using namespace std;
 
-// Kernel definition
+// Saturation Filter
 __global__ void saturation(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -24,7 +26,7 @@ __global__ void saturation(unsigned int* d_img, unsigned int* d_tmp, int width, 
   }
 }
 
-// Kernel definition
+// Symetry Filter
 __global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -39,6 +41,21 @@ __global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int
   }
 }
 
+// Grayscale Filter
+__global__ void grayscale(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+{
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if(idy < height && idx < width){
+    int ida = ((idy * width) + idx) * 3;
+    double val = (0.299*d_tmp[ida + 0]) + (0.587*d_tmp[ida + 1]) + (0.114*d_tmp[ida + 2]);
+    d_img[ida + 0] = (int)val;
+    d_img[ida + 1] = (int)val;
+    d_img[ida + 2] = (int)val;
+  }
+}
+
 int main (int argc , char** argv)
 {
   FreeImage_Initialise();
@@ -46,7 +63,6 @@ int main (int argc , char** argv)
   const char *PathDest = "new_img.png";
   // load and decode a regular file
   FREE_IMAGE_FORMAT fif = FreeImage_GetFileType(PathName);
-
   FIBITMAP* bitmap = FreeImage_Load(FIF_JPEG, PathName, 0);
 
   if(! bitmap )
@@ -55,12 +71,9 @@ int main (int argc , char** argv)
   unsigned width  = FreeImage_GetWidth(bitmap);
   unsigned height = FreeImage_GetHeight(bitmap);
   unsigned pitch  = FreeImage_GetPitch(bitmap);
-
   fprintf(stderr, "Processing Image of size %d x %d\n", width, height);
 
   unsigned int *img = (unsigned int*) malloc(sizeof(unsigned int) * 3 * width * height);
-  //  unsigned int *d_img = (unsigned int*) malloc(sizeof(unsigned int) * 3 * width * height);
-  //unsigned int *d_tmp = (unsigned int*) malloc(sizeof(unsigned int) * 3 * width * height);
 
   //Allocates arrays on GPU
   unsigned int *d_img, *d_tmp;
@@ -84,51 +97,33 @@ int main (int argc , char** argv)
     bits += pitch;
   }
 
-  //memcpy(d_img, img, 3 * width * height * sizeof(unsigned int));
-  //memcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int));
+  //Init blockdim
+  dim3 nbThreadsPerBlock(BLOCK_WIDTH,BLOCK_WIDTH,1);
+
+  int dimx = 0, dimy = 0;
+  if((width) % BLOCK_WIDTH) dimx++;
+  if((height) % BLOCK_WIDTH) dimy++;
+  dim3 nbBlocks( (width / nbThreadsPerBlock.x)+dimx, (height / nbThreadsPerBlock.y)+dimy, 1);
+  cudaError_t cudaerr;
+
+  //##############################
   
-  //MemCopy
   cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
   cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+  saturation<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
 
-  // Kernel
- //for ( int y =0; y<height; y++)
- //{
- //  for ( int x =0; x<width; x++)
- //  {
- //    int ida = ((y * width) + x) * 3;
- //    int idb = ((width * height) - ((y * width) + x)) * 3;
- //    d_img[ida + 0] = d_tmp[idb + 0];
- //    d_img[ida + 1] = d_tmp[idb + 1];
- //    d_img[ida + 2] = d_tmp[idb + 2];
- //  }
- //}
-
- //Init blockdim
- dim3 nbThreadsPerBlock(BLOCK_WIDTH,BLOCK_WIDTH,1);
-
- int dimx,dimy;
- dimx = 0; dimy = 0;
- if((width) % BLOCK_WIDTH) dimx++;
- if((height) % BLOCK_WIDTH) dimy++;
- dim3 nbBlocks( (width / nbThreadsPerBlock.x)+dimx, (height / nbThreadsPerBlock.y)+dimy, 1);
-
- //Kernel call
- saturation<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
-
-  cudaError_t cudaerr = cudaDeviceSynchronize();
+  cudaerr = cudaDeviceSynchronize();
   if (cudaerr != cudaSuccess)
     printf("kernel launch failed with error \"%s\".\n",
            cudaGetErrorString(cudaerr));
 
- cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+  printf("Saturation Done !\n");
 
- printf("Saturation Done !\n");
- //##############################
-  //MemCopy
+  //##############################
+
   cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
   cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
-  //Kernel call
   symetry<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
 
   cudaerr = cudaDeviceSynchronize();
@@ -136,11 +131,24 @@ int main (int argc , char** argv)
     printf("kernel launch failed with error \"%s\".\n",
            cudaGetErrorString(cudaerr));
 
- cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+  printf("Symetry Done !\n");
 
- printf("Symetry Done !\n");
+  //##############################
 
- //##############################
+  cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+  grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+
+  cudaerr = cudaDeviceSynchronize();
+  if (cudaerr != cudaSuccess)
+    printf("kernel launch failed with error \"%s\".\n",
+        cudaGetErrorString(cudaerr));
+
+  cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+  printf("Grayscale Done !\n");
+
+  //##############################
 
   bits = (BYTE*)FreeImage_GetBits(bitmap);
   for ( int y =0; y<height; y++)
@@ -168,8 +176,7 @@ int main (int argc , char** argv)
     cout << "Image successfully saved ! " << endl ;
   FreeImage_DeInitialise(); //Cleanup !
 
-
- cudaFree(d_img);
- cudaFree(d_tmp);
- free(img);
+  cudaFree(d_img);
+  cudaFree(d_tmp);
+  free(img);
 }
