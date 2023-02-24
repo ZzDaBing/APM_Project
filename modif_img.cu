@@ -41,7 +41,7 @@ __global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int
   }
 }
 
-// Kernel definition
+// Blur definition
 __global__ void blur(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -181,10 +181,45 @@ __global__ void grayscale(unsigned int* d_img, unsigned int* d_tmp, int width, i
   }
 }
 
+// Sobel Filter
+__global__ void sobel(unsigned int *d_img, unsigned int *d_tmp, int width, int height) {
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if (idy < height && idx < width){
+    int ida_1 = (((idy-1) * width) + idx+1) * 3;
+    int ida_2 = ((idy     * width) + idx+1) * 3;
+    int ida_3 = (((idy+1) * width) + idx+1) * 3;
+    int ida_4 = (((idy-1) * width) + idx)   * 3;
+    int ida_5 = ((idy     * width) + idx)   * 3;
+    int ida_6 = (((idy+1) * width) + idx)   * 3;
+    int ida_7 = (((idy-1) * width) + idx-1) * 3;
+    int ida_8 = ((idy     * width) + idx-1) * 3;
+    int ida_9 = (((idy+1) * width) + idx-1) * 3;
+
+    int Gx = 0, Gy = 0;
+
+    if (idy < height-1 && idy > 0 && idx < width-1 && idx > 0){
+        Gx = -1 * d_tmp[ida_7] + d_tmp[ida_1]
+            - 2 * d_tmp[ida_8] + 2 * d_tmp[ida_2]
+            - d_tmp[ida_9] + d_tmp[ida_3];
+        Gy = -1 * d_tmp[ida_7] - 2 * d_tmp[ida_4]
+            - d_tmp[ida_1] + d_tmp[ida_9]
+            + 2 * d_tmp[ida_6] + d_tmp[ida_3];
+    }
+
+    int sum = Gx * Gx + Gy * Gy;
+    int res = sqrt((float)sum);
+    d_img[ida_9] = res;
+    d_img[ida_9 + 1] = res;
+    d_img[ida_9 + 2] = res;
+  }
+}
+
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, satG, satB, sym, grey, blur\n", argv[0]), 1;
+    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel\n", argv[0]), 1;
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
@@ -256,6 +291,10 @@ int main (int argc , char** argv)
         cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       }
     }
+    else if (strcmp(argv[i], "sobel") == 0)
+      sobel<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+    else
+      printf("Unreconized filter : %s\n", argv[i]);
 
     cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
