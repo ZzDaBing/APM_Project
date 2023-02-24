@@ -284,7 +284,9 @@ int main (int argc , char** argv)
       grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
     else if (strcmp(argv[i], "blur") == 0){
       int blur_lvl = 100; //Default blur
-      for (int i = 0; i < blur_lvl; ++i){
+      blur<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+      for (int i = 1; i < blur_lvl; ++i){
         cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
         cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
         blur<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
