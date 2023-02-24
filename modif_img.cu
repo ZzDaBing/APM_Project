@@ -210,9 +210,9 @@ __global__ void sobel(unsigned int *d_img, unsigned int *d_tmp, int width, int h
 
     int sum = Gx * Gx + Gy * Gy;
     int res = sqrt((float)sum);
-    d_img[ida_9] = res;
-    d_img[ida_9 + 1] = res;
-    d_img[ida_9 + 2] = res;
+    d_img[ida_5] = res;
+    d_img[ida_5 + 1] = res;
+    d_img[ida_5 + 2] = res;
   }
 }
 
