@@ -41,6 +41,131 @@ __global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int
   }
 }
 
+// Kernel definition
+__global__ void blur(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+{
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if(idy < height && idx < width){
+
+    //
+    int ida = ((idy * width) + idx) * 3;
+    int avg_red = d_tmp[ida + 0];
+    int avg_green = d_tmp[ida + 1];
+    int avg_blue = d_tmp[ida + 2];
+
+    //TOP BORDER
+    if(idx < width && idy == 0){
+      //Top-left corner
+      if(ida == 0){ 
+        avg_red += d_tmp[3] + d_tmp[(width * 3)];
+        avg_green += d_tmp[4] + d_tmp[(width * 3) + 1];
+        avg_blue += d_tmp[5] + d_tmp[(width * 3) + 2];
+
+        avg_red /= 3;
+        avg_green /= 3;
+        avg_blue /= 3;
+      }
+      else{
+        //Top-right corner
+        if(ida == width - 1){ 
+          avg_red += d_tmp[ida - 3] + d_tmp[ida + (width * 3)];
+          avg_green += d_tmp[ida - 2] + d_tmp[ida + (width * 3) + 1];
+          avg_blue += d_tmp[ida - 1] + d_tmp[ida + (width * 3) + 2];
+
+          avg_red /= 3;
+          avg_green /= 3;
+          avg_blue /= 3;
+        }
+        else{
+          avg_red += d_tmp[ida - 3] + d_tmp[ida + 3] + d_tmp[ida + (width * 3)];
+          avg_green += d_tmp[ida - 2] + d_tmp[ida + 4] + d_tmp[ida + (width * 3) + 1];
+          avg_blue += d_tmp[ida - 1] + d_tmp[ida + 5] + d_tmp[ida + (width * 3) + 2];
+
+          avg_red /= 4;
+          avg_green /= 4;
+          avg_blue /= 4;
+        }
+      }
+    }
+
+    //BOTTOM BORDER
+    if(idy == (height - 1)){
+      //Bottom-left corner
+      if(idx == 0){
+        avg_red += d_tmp[ida + 3] + d_tmp[(ida - width * 3)];
+        avg_green += d_tmp[ida + 4] + d_tmp[(ida - width * 3) + 1];
+        avg_blue += d_tmp[ida + 5] + d_tmp[(ida - width * 3) + 2];
+
+        avg_red /= 3;
+        avg_green /= 3;
+        avg_blue /= 3;
+      }
+      else{
+        //Bottom-right corner
+        if(idx == (width - 1)){
+          avg_red += d_tmp[ida - 3] + d_tmp[ida - (width * 3)];
+          avg_green += d_tmp[ida - 2] + d_tmp[ida - (width * 3) + 1];
+          avg_blue += d_tmp[ida - 1] + d_tmp[ida - (width * 3) + 2];
+
+          avg_red /= 3;
+          avg_green /= 3;
+          avg_blue /= 3;
+        }
+        else{
+          avg_red += d_tmp[ida - 3] + d_tmp[ida + 3] + d_tmp[ida - (width * 3)];
+          avg_green += d_tmp[ida - 2] + d_tmp[ida + 4] + d_tmp[ida - (width * 3) + 1];
+          avg_blue += d_tmp[ida - 1] + d_tmp[ida + 5] + d_tmp[ida - (width * 3) + 2];
+
+          avg_red /= 4;
+          avg_green /= 4;
+          avg_blue /= 4;
+        }
+      }
+    }
+
+    //LEFT BORDER (without corners)
+    if( idx == 0 && idy != 0 && idy != height - 1 ){
+      avg_red += d_tmp[(ida - width * 3)] + d_tmp[ida + 3] + d_tmp[(ida + width * 3)];
+      avg_green += d_tmp[(ida - width * 3) + 1] + d_tmp[ida + 4] + d_tmp[(ida + width * 3) + 1];
+      avg_blue += d_tmp[(ida - width * 3) + 2] + d_tmp[ida + 5] + d_tmp[(ida + width * 3) + 2];
+
+      avg_red /= 4;
+      avg_green /= 4;
+      avg_blue /= 4;
+    }
+
+    //RIGHT BORDER (without corners)
+    if( idx == width - 1 && idy != 0 && idy != height - 1 ){
+      avg_red += d_tmp[(ida - width * 3)] + d_tmp[ida - 3] + d_tmp[(ida + width * 3)];
+      avg_green += d_tmp[(ida - width * 3) + 1] + d_tmp[ida - 2] + d_tmp[(ida + width * 3) + 1];
+      avg_blue += d_tmp[(ida - width * 3) + 2] + d_tmp[ida - 1] + d_tmp[(ida + width * 3) + 2];
+
+      avg_red /= 4;
+      avg_green /= 4;
+      avg_blue /= 4;
+    }
+
+    //
+    if( (idx > 0) && (idx < (width - 1)) && (idy > 0) && (idy < (height - 1)) ){
+      avg_red += d_tmp[(ida - width * 3)] + d_tmp[ida - 3]  + d_tmp[ida + 3] + d_tmp[(ida + width * 3)];
+      avg_green += d_tmp[(ida - width * 3) + 1] + d_tmp[ida - 2]  + d_tmp[ida + 4] + d_tmp[(ida + width * 3) + 1];
+      avg_blue += d_tmp[(ida - width * 3) + 2] + d_tmp[ida - 1]  + d_tmp[ida + 5] + d_tmp[(ida + width * 3) + 2];
+
+      avg_red /= 5;
+      avg_green /= 5;
+      avg_blue /= 5;
+    }
+
+    //Update pixel color
+    d_img[ida + 0] = avg_red;
+    d_img[ida + 1] = avg_green;
+    d_img[ida + 2] = avg_blue;
+
+  }
+}
+
 // Grayscale Filter
 __global__ void grayscale(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
@@ -59,7 +184,7 @@ __global__ void grayscale(unsigned int* d_img, unsigned int* d_tmp, int width, i
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, satG, satB, sym, grey\n", argv[0]), 1;
+    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, satG, satB, sym, grey, blur\n", argv[0]), 1;
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
@@ -122,6 +247,15 @@ int main (int argc , char** argv)
       symetry<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
     else if (strcmp(argv[i], "grey") == 0)
       grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+    else if (strcmp(argv[i], "blur") == 0){
+      int blur_lvl = 100; //Default blur
+      for (int i = 0; i < blur_lvl; ++i){
+        cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+        blur<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+        cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+      }
+    }
 
     cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
