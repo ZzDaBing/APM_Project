@@ -16,33 +16,28 @@ __global__ void saturation(unsigned int* d_img, unsigned int* d_tmp, int width, 
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
   
-  int ida = ((idy * width) + idx) * 3;
-  //int idb = ((width * height) - ((idy * width) + idx)) * 3;
-  d_img[ida + 0] = 255;  //No red on img
-  d_img[ida + 1] = d_tmp[ida + 1];
-  d_img[ida + 2] = d_tmp[ida + 2];
-
+  if(idy < height && idx < width){
+    int ida = ((idy * width) + idx) * 3;
+    d_img[ida + 0] = 255;  //No red on img
+    d_img[ida + 1] = d_tmp[ida + 1];
+    d_img[ida + 2] = d_tmp[ida + 2];
+  }
 }
 
 // Kernel definition
-/*__global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+__global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
-  //Jeu sé pa enkor fo fèr koua aveque
-  int i = blockIdx.x + blockDim.x * threadIdx.x;
-  int j = blockIdx.y + blockDim.y * threadIdx.y;
-  
-  for ( int y =0; y<height; y++)
-   {
-     for ( int x =0; x<width; x++)
-     {
-       int ida = ((y * width) + x) * 3;
-       int idb = ((width * height) - ((y * width) + x)) * 3;
-       d_img[ida + 0] = d_tmp[ida];
-       d_img[ida + 1] = d_tmp[ida + 1];
-       d_img[ida + 2] = d_tmp[ida + 2];
-     }
-   }
-}*/
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if(idy < height && idx < width){
+    int ida = ((idy * width) + idx) * 3;
+    int idinvers = ((width * height) - ((idy * width) + idx)) * 3;
+    d_img[ida + 0] = d_tmp[idinvers];
+    d_img[ida + 1] = d_tmp[idinvers + 1];
+    d_img[ida + 2] = d_tmp[idinvers + 2];
+  }
+}
 
 int main (int argc , char** argv)
 {
@@ -110,13 +105,12 @@ int main (int argc , char** argv)
  //}
 
  //Init blockdim
-
  dim3 nbThreadsPerBlock(BLOCK_WIDTH,BLOCK_WIDTH,1);
+
  int dimx,dimy;
  dimx = 0; dimy = 0;
  if((width) % BLOCK_WIDTH) dimx++;
  if((height) % BLOCK_WIDTH) dimy++;
-
  dim3 nbBlocks( (width / nbThreadsPerBlock.x)+dimx, (height / nbThreadsPerBlock.y)+dimy, 1);
 
  //Kernel call
@@ -128,6 +122,25 @@ int main (int argc , char** argv)
            cudaGetErrorString(cudaerr));
 
  cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+ printf("Saturation Done !\n");
+ //##############################
+  //MemCopy
+  cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+  //Kernel call
+  symetry<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+
+  cudaerr = cudaDeviceSynchronize();
+  if (cudaerr != cudaSuccess)
+    printf("kernel launch failed with error \"%s\".\n",
+           cudaGetErrorString(cudaerr));
+
+ cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+ printf("Symetry Done !\n");
+
+ //##############################
 
   bits = (BYTE*)FreeImage_GetBits(bitmap);
   for ( int y =0; y<height; y++)
