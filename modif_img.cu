@@ -113,48 +113,21 @@ int main (int argc , char** argv)
 
   for (int i = 1; i < argc; ++i)
   {
+    cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
+
     if(strcmp(argv[i], "satR") == 0)
-    {
-      cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
-      cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
       saturation<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
-
-      cudaerr = cudaDeviceSynchronize();
-      if (cudaerr != cudaSuccess)
-        printf("kernel launch failed with error \"%s\".\n",
-               cudaGetErrorString(cudaerr));
-
-      cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-      printf("Red Saturation Done !\n");
-    }
     else if(strcmp(argv[i], "sym") == 0)
-    {
-      cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
-      cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
       symetry<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
-
-      cudaerr = cudaDeviceSynchronize();
-      if (cudaerr != cudaSuccess)
-        printf("kernel launch failed with error \"%s\".\n",
-               cudaGetErrorString(cudaerr));
-
-      cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-      printf("Symetry Done !\n");
-    }
     else if (strcmp(argv[i], "grey") == 0)
-    {
-      cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
-      cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
       grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
 
-      cudaerr = cudaDeviceSynchronize();
-      if (cudaerr != cudaSuccess)
-        printf("kernel launch failed with error \"%s\".\n",
-            cudaGetErrorString(cudaerr));
-
-      cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-      printf("Grayscale Done !\n");
-    }
+    cudaerr = cudaDeviceSynchronize();
+    if (cudaerr != cudaSuccess)
+      printf("kernel launch failed with error \"%s\".\n",
+               cudaGetErrorString(cudaerr));
+    cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
   }
 
   //##############################
