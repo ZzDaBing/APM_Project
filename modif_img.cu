@@ -13,31 +13,15 @@ using namespace std;
 // Kernel definition
 __global__ void saturation(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
-  //Jeu sé pa enkor fo fèr koua aveque
-  int idx = blockIdx.x + blockDim.x * threadIdx.x;
-  int idy = blockIdx.y + blockDim.y * threadIdx.y;
-
-  int i = ((idy * width) + idx) * 3;
-
-  for ( int x =0; x<width; x++)
-     {
-       int ida = ((idy * width) + idx) * 3;
-       d_img[ida + 0] = 0;  //No red on img
-       d_img[ida + 1] = d_tmp[ida + 1];
-       d_img[ida + 2] = d_tmp[ida + 2];
-     }
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
   
-  /*for ( int y =0; y<height; y++)
-   {
-     for ( int x =0; x<width; x++)
-     {
-       int ida = ((idy * width) + idx) * 3;
-       int idb = ((width * height) - ((y * width) + x)) * 3;
-       d_img[ida + 0] = 0;  //No red on img
-       d_img[ida + 1] = d_tmp[ida + 1];
-       d_img[ida + 2] = d_tmp[ida + 2];
-     }
-   }*/
+  int ida = ((idy * width) + idx) * 3;
+  //int idb = ((width * height) - ((idy * width) + idx)) * 3;
+  d_img[ida + 0] = 255;  //No red on img
+  d_img[ida + 1] = d_tmp[ida + 1];
+  d_img[ida + 2] = d_tmp[ida + 2];
+
 }
 
 // Kernel definition
@@ -127,13 +111,21 @@ int main (int argc , char** argv)
 
  //Init blockdim
 
- int nbBlocks = (width * height) / BLOCK_WIDTH;
- if((width * height) % BLOCK_WIDTH) nbBlocks++;
- dim3 gridDim(nbBlocks, nbBlocks, 1);
- dim3 blockDim(BLOCK_WIDTH, BLOCK_WIDTH, 1);
+ dim3 nbThreadsPerBlock(BLOCK_WIDTH,BLOCK_WIDTH,1);
+ int dimx,dimy;
+ dimx = 0; dimy = 0;
+ if((width) % BLOCK_WIDTH) dimx++;
+ if((height) % BLOCK_WIDTH) dimy++;
+
+ dim3 nbBlocks( (width / nbThreadsPerBlock.x)+dimx, (height / nbThreadsPerBlock.y)+dimy, 1);
 
  //Kernel call
- saturation<<<gridDim, blockDim>>>(d_img, d_tmp, width, height);
+ saturation<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+
+  cudaError_t cudaerr = cudaDeviceSynchronize();
+  if (cudaerr != cudaSuccess)
+    printf("kernel launch failed with error \"%s\".\n",
+           cudaGetErrorString(cudaerr));
 
  cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
 
