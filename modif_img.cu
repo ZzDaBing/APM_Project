@@ -242,6 +242,20 @@ __global__ void only_blue(unsigned int* d_img, unsigned int* d_tmp, int start_x,
   }
 }
 
+// Rotate 45
+__global__ void rotate45(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height) {
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if(idy < stop_height && idx < stop_width){
+    int ida   = (((idy+start_y)   * width) + (idx+start_x))   * 3;
+    int ida_2 = (((idx+start_y) * width) + (height-idy-1+start_x)) * 3;
+    d_img[ida] = d_tmp[ida_2];
+    d_img[ida + 1] = d_tmp[ida_2 + 1];
+    d_img[ida + 2] = d_tmp[ida_2 + 2];
+  }
+}
+
 // Popart filter
 __global__ void popart(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
@@ -274,7 +288,7 @@ __global__ void popart(unsigned int* d_img, unsigned int* d_tmp, int width, int 
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, popart\n", argv[0]), 1;
+    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, popart\n", argv[0]), 1;
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
@@ -354,6 +368,14 @@ int main (int argc , char** argv)
       negative<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
     else if (strcmp(argv[i], "blue") == 0)
       only_blue<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
+    else if (strcmp(argv[i], "rotate") == 0){
+      rotate45<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
+      // Not working with sizes exchange
+      // even if it would be logic
+      //unsigned tmp = width;
+      //width = height;
+      //height = tmp;
+    }
     else if (strcmp(argv[i], "popart") == 0){
       popart<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
       cudaMemcpy(d_tmp, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToDevice);
