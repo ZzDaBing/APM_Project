@@ -13,28 +13,28 @@
 using namespace std;
 
 // Saturation Filter
-__global__ void saturation(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+__global__ void saturation(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
   
-  if(idy < height && idx < width){
-    int ida = ((idy * width) + idx) * 3;
-    d_img[ida + 0] = 255;  //No red on img
+  if(idy < stop_height && idx < stop_width){
+    int ida = (((idy+start_y) * width) + (idx+start_x)) * 3;
+    d_img[ida + 0] = 255;
     d_img[ida + 1] = d_tmp[ida + 1];
     d_img[ida + 2] = d_tmp[ida + 2];
   }
 }
 
 // Symetry Filter
-__global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+__global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-  if(idy < height && idx < width){
-    int ida = ((idy * width) + idx) * 3;
-    int idinvers = ((width * height) - ((idy * width) + idx)) * 3;
+  if((idy+start_y) < stop_height && (idx+start_x) < stop_width){
+    int ida = (((idy+start_y) * width) + (idx+start_x)) * 3;
+    int idinvers = ((width * height) - (((idy+start_y) * width) + (idx+start_x))) * 3;
     d_img[ida + 0] = d_tmp[idinvers];
     d_img[ida + 1] = d_tmp[idinvers + 1];
     d_img[ida + 2] = d_tmp[idinvers + 2];
@@ -42,21 +42,21 @@ __global__ void symetry(unsigned int* d_img, unsigned int* d_tmp, int width, int
 }
 
 // Blur definition
-__global__ void blur(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+__global__ void blur(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-  if(idy < height && idx < width){
+  if(idy < stop_height && idx < stop_width){
 
     //
-    int ida = ((idy * width) + idx) * 3;
+    int ida = (((idy+start_y) * width) + (idx+start_x)) * 3;
     int avg_red = d_tmp[ida + 0];
     int avg_green = d_tmp[ida + 1];
     int avg_blue = d_tmp[ida + 2];
 
     //TOP BORDER
-    if(idx < width && idy == 0){
+    if(idx < stop_width && idy == 0){
       //Top-left corner
       if(ida == 0){ 
         avg_red += d_tmp[3] + d_tmp[(width * 3)];
@@ -69,7 +69,7 @@ __global__ void blur(unsigned int* d_img, unsigned int* d_tmp, int width, int he
       }
       else{
         //Top-right corner
-        if(ida == width - 1){ 
+        if(ida == stop_width - 1){ 
           avg_red += d_tmp[ida - 3] + d_tmp[ida + (width * 3)];
           avg_green += d_tmp[ida - 2] + d_tmp[ida + (width * 3) + 1];
           avg_blue += d_tmp[ida - 1] + d_tmp[ida + (width * 3) + 2];
@@ -91,7 +91,7 @@ __global__ void blur(unsigned int* d_img, unsigned int* d_tmp, int width, int he
     }
 
     //BOTTOM BORDER
-    if(idy == (height - 1)){
+    if(idy == (stop_height - 1)){
       //Bottom-left corner
       if(idx == 0){
         avg_red += d_tmp[ida + 3] + d_tmp[(ida - width * 3)];
@@ -167,13 +167,13 @@ __global__ void blur(unsigned int* d_img, unsigned int* d_tmp, int width, int he
 }
 
 // Grayscale Filter
-__global__ void grayscale(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+__global__ void grayscale(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-  if(idy < height && idx < width){
-    int ida = ((idy * width) + idx) * 3;
+  if(idy < stop_height && idx < stop_width){
+    int ida = (((idy+start_y) * width) + (idx+start_x)) * 3;
     double val = (0.299*d_tmp[ida + 0]) + (0.587*d_tmp[ida + 1]) + (0.114*d_tmp[ida + 2]);
     d_img[ida + 0] = (int)val;
     d_img[ida + 1] = (int)val;
@@ -182,24 +182,24 @@ __global__ void grayscale(unsigned int* d_img, unsigned int* d_tmp, int width, i
 }
 
 // Sobel Filter
-__global__ void sobel(unsigned int *d_img, unsigned int *d_tmp, int width, int height) {
+__global__ void sobel(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height) {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-  if (idy < height && idx < width){
-    int ida_1 = (((idy-1) * width) + idx+1) * 3;
-    int ida_2 = ((idy     * width) + idx+1) * 3;
-    int ida_3 = (((idy+1) * width) + idx+1) * 3;
-    int ida_4 = (((idy-1) * width) + idx)   * 3;
-    int ida_5 = ((idy     * width) + idx)   * 3;
-    int ida_6 = (((idy+1) * width) + idx)   * 3;
-    int ida_7 = (((idy-1) * width) + idx-1) * 3;
-    int ida_8 = ((idy     * width) + idx-1) * 3;
-    int ida_9 = (((idy+1) * width) + idx-1) * 3;
+  if(idy < stop_height && idx < stop_width){
+    int ida_1 = ((((idy+start_y)-1) * width) + (idx+start_x)+1) * 3;
+    int ida_2 = (((idy+start_y)     * width) + (idx+start_x)+1) * 3;
+    int ida_3 = ((((idy+start_y)+1) * width) + (idx+start_x)+1) * 3;
+    int ida_4 = ((((idy+start_y)-1) * width) + (idx+start_x))   * 3;
+    int ida_5 = (((idy+start_y)     * width) + (idx+start_x))   * 3;
+    int ida_6 = ((((idy+start_y)+1) * width) + (idx+start_x))   * 3;
+    int ida_7 = ((((idy+start_y)-1) * width) + (idx+start_x)-1) * 3;
+    int ida_8 = (((idy+start_y)     * width) + (idx+start_x)-1) * 3;
+    int ida_9 = ((((idy+start_y)+1) * width) + (idx+start_x)-1) * 3;
 
     int Gx = 0, Gy = 0;
 
-    if (idy < height-1 && idy > 0 && idx < width-1 && idx > 0){
+    if ((idy+start_y) < stop_height-1 && (idy+start_y) > 0 && (idx+start_x) < stop_width-1 && (idx+start_x) > 0){
         Gx = -1 * d_tmp[ida_7] + d_tmp[ida_1]
             - 2 * d_tmp[ida_8] + 2 * d_tmp[ida_2]
             - d_tmp[ida_9] + d_tmp[ida_3];
@@ -217,12 +217,12 @@ __global__ void sobel(unsigned int *d_img, unsigned int *d_tmp, int width, int h
 }
 
 // Negative Filter
-__global__ void negative(unsigned int *d_img, unsigned int *d_tmp, int width, int height) {
+__global__ void negative(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height) {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-  if(idy < height && idx < width){
-    int ida = ((idy * width) + idx) * 3;
+  if(idy < stop_height && idx < stop_width){
+    int ida = (((idy+start_y) * width) + (idx+start_x)) * 3;
     d_img[ida + 0] = 255 - d_tmp[ida];
     d_img[ida + 1] = 255 - d_tmp[ida + 1];
     d_img[ida + 2] = 255 - d_tmp[ida + 2];
@@ -230,22 +230,51 @@ __global__ void negative(unsigned int *d_img, unsigned int *d_tmp, int width, in
 }
 
 // Only-one-color Filter
-__global__ void only_blue(unsigned int *d_img, unsigned int *d_tmp, int width, int height) {
+__global__ void only_blue(unsigned int* d_img, unsigned int* d_tmp, int start_x, int start_y, int stop_width, int stop_height, int width, int height) {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-  if(idy < height && idx < width){
-    int ida = ((idy * width) + idx) * 3;
+  if(idy < stop_height && idx < stop_width){
+    int ida = (((idy+start_y) * width) + (idx+start_x)) * 3;
     d_img[ida + 0] = 0;
     d_img[ida + 1] = 0;
     d_img[ida + 2] = d_tmp[ida + 2];
   }
 }
 
+// Popart filter
+__global__ void popart(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+{
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+  if (idy < height && idx < width){
+    int ida = ((idy * width) + idx) * 3;
+
+    int x,y;
+    int w_d = (int)width / 2;
+    int h_d = (int)height / 2;
+
+    x = idx;
+    y = idy;
+
+    if(idx % 2 == 0) x = (int)(idx / 2);
+    else{ x = (int)( ((idx - 1) / 2) + w_d );}
+    if(idy % 2 == 0) y = (int)(idy / 2);
+    else{ y = (int)( ((idy - 1) / 2) + h_d );}
+
+    int idb = ((y * width) + x) * 3;
+    
+    d_img[idb + 0] = d_tmp[ida + 0];
+    d_img[idb + 1] = d_tmp[ida + 1];
+    d_img[idb + 2] = d_tmp[ida + 2];
+  }
+}
+
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue\n", argv[0]), 1;
+    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, popart\n", argv[0]), 1;
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
@@ -303,28 +332,45 @@ int main (int argc , char** argv)
     cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
 
     if(strcmp(argv[i], "satR") == 0)
-      saturation<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      saturation<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
     else if(strcmp(argv[i], "sym") == 0)
-      symetry<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      symetry<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
     else if (strcmp(argv[i], "grey") == 0)
-      grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
     else if (strcmp(argv[i], "blur") == 0){
       int blur_lvl = 100; //Default blur
-      blur<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      blur<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
       cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       for (int i = 1; i < blur_lvl; ++i){
         cudaMemcpy(d_img, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
         cudaMemcpy(d_tmp, img, 3 * width * height * sizeof(unsigned int), cudaMemcpyHostToDevice);
-        blur<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+        blur<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
         cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       }
     }
     else if (strcmp(argv[i], "sobel") == 0)
-      sobel<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      sobel<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
     else if (strcmp(argv[i], "negative") == 0)
-      negative<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      negative<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
     else if (strcmp(argv[i], "blue") == 0)
-      only_blue<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      only_blue<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, 0, 0, width, height, width, height);
+    else if (strcmp(argv[i], "popart") == 0){
+      popart<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      cudaMemcpy(d_tmp, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToDevice);
+      nbBlocks.x /= 2;
+      nbBlocks.y /= 2;
+
+      cudaStream_t streams[4];
+      for (int i = 0; i < 4; ++i)
+        cudaStreamCreate(&streams[i]);
+
+      //Default filters applied
+      saturation<<<nbBlocks, nbThreadsPerBlock, 0, streams[0]>>>(d_img, d_tmp, 0, 0, width / 2, height / 2, width, height);  //BOT LEFT
+      negative<<<nbBlocks, nbThreadsPerBlock, 0, streams[1]>>>(d_img, d_tmp, width / 2, height / 2, width, height, width, height); //TOP RIGHT
+      symetry<<<nbBlocks, nbThreadsPerBlock, 0, streams[2]>>>(d_img, d_tmp, width / 2, 0, width, height / 2, width, height);  //BOT RIGHT
+      //only_blue<<<nbBlocks, nbThreadsPerBlock, 0, streams[2]>>>(d_img, d_tmp, width / 2, 0, width, height / 2, width, height);  //BOT RIGHT
+      sobel<<<nbBlocks, nbThreadsPerBlock, 0, streams[3]>>>(d_img, d_tmp, 0, height / 2, width / 2, height, width, height); //TOP LEFT
+    }
     else
       printf("Unreconized filter : %s\n", argv[i]);
 
