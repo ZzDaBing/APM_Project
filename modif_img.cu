@@ -248,11 +248,11 @@ __global__ void rotate45(unsigned int* d_img, unsigned int* d_tmp, int start_x, 
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
   if(idy < stop_height && idx < stop_width){
-    int ida   = (((idy+start_y)   * width) + (idx+start_x))   * 3;
+    int ida   = (((idy+start_y) * width) + (idx+start_x)) * 3;
     int ida_2 = (((idx+start_y) * width) + (height-idy-1+start_x)) * 3;
-    d_img[ida] = d_tmp[ida_2];
-    d_img[ida + 1] = d_tmp[ida_2 + 1];
-    d_img[ida + 2] = d_tmp[ida_2 + 2];
+    d_img[ida_2] = d_tmp[ida];
+    d_img[ida_2 + 1] = d_tmp[ida + 1];
+    d_img[ida_2 + 2] = d_tmp[ida + 2];
   }
 }
 
