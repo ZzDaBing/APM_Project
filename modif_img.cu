@@ -313,7 +313,25 @@ __global__ void photomaton(unsigned int* d_img, unsigned int* d_tmp, int width, 
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, resize, photomaton, popart\n", argv[0]), 1;
+    return printf("USAGE: %s <FLAGS/FILTER 1> [<FILTER 2> ...]\n FLAGS = --help, FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, resize, photomaton, popart\n", argv[0]), 1;
+
+  if(strcmp(argv[1], "--help") == 0){
+      printf("\nUSAGE: %s <FLAGS/FILTER 1> [<FILTER 2> ...]\n FLAGS = --help, FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, resize, photomaton, popart\n", argv[0]);
+      printf("\n# FLAGS\n- --help : Prints this message\n");
+      printf("\n# FILTERS\n \
+        - satR : Sets red color at maximum value\n \
+        - sym : Horizontal symetry of the image\n \
+        - grey : Grays out the image\n \
+        - blur : Blurs the image at a blur level (Default=100)\n \
+        - sobel : Applies the sobel filter\n \
+        - negative : Inverses light degrees and colors\n \
+        - blue : Sets red and green colors at 0\n \
+        - rotate : rotates the image at 90 degree\n \
+        - resize : resizes the image (Default is width/2 height/2)\n \
+        - photomaton : splits the image in 4 small ones\n \
+        - popart : Splits the image in 4 small ones and applies filters on each (Default filters are satR, blue, symetry and negative)\n");
+      return 0;
+    }
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
