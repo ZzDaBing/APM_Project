@@ -387,8 +387,10 @@ int main (int argc , char** argv)
         cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       }
     }
-    else if (strcmp(argv[i], "sobel") == 0)
+    else if (strcmp(argv[i], "sobel") == 0){
+      grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
       sobel<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+    }
     else if (strcmp(argv[i], "negative") == 0)
       negative<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
     else if (strcmp(argv[i], "blue") == 0)
