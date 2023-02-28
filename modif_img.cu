@@ -255,6 +255,32 @@ __global__ void rotate45(unsigned int* d_img, unsigned int* d_tmp, int width, in
   }
 }
 
+// Resize Filter
+__global__ void resize(unsigned int* d_img, unsigned int* d_tmp, int width, int height, int new_width, int new_height)
+{
+  int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
+  int ida = (idy * width + idx) * 3;
+
+  if(idy < height && idx < width) {
+    d_img[ida] = 0;
+    d_img[ida + 1] = 0;
+    d_img[ida + 2] = 0;
+  }
+
+  if (idx < new_width && idy < new_height) {
+    double scale = (double)new_width / (double)width;
+    int idx_2 = (int)((double)idx / scale);
+    int idy_2 = (int)((double)idy / scale);
+
+    int ida_2 = (idy_2 * width + idx_2) * 3;
+
+    d_img[ida] = d_tmp[ida_2];
+    d_img[ida + 1] = d_tmp[ida_2 + 1];
+    d_img[ida + 2] = d_tmp[ida_2 + 2];
+  }
+}
+
 // Popart filter
 __global__ void popart(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
@@ -287,7 +313,7 @@ __global__ void popart(unsigned int* d_img, unsigned int* d_tmp, int width, int 
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, popart\n", argv[0]), 1;
+    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, resize, popart\n", argv[0]), 1;
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
@@ -375,6 +401,8 @@ int main (int argc , char** argv)
       //width = height;
       //height = tmp;
     }
+    else if (strcmp(argv[i], "resize") == 0)
+      resize<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height, width/2, height/2);
     else if (strcmp(argv[i], "popart") == 0){
       //
       popart<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
