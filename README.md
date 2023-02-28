@@ -18,6 +18,8 @@ make
 ```
 Available flags: ``--help``
 
+--help : prints the usage and the flags/filters available
+
 Available filters: ``satR``, ``sym``, ``grey``, ``blur``, ``sobel``, ``negative``, ``blue``, ``rotate``, ``resize``, ``photomaton``, ``popart``.
 
 - satR : Sets red color at maximum value
@@ -35,9 +37,9 @@ Available filters: ``satR``, ``sym``, ``grey``, ``blur``, ``sobel``, ``negative`
 - blue : Sets red and green colors at 0
 ![image](https://user-images.githubusercontent.com/57614894/221923074-0a0ae5ea-f909-408d-bcec-fa08f16721e9.png)
 - rotate : rotates the image at 90 degree
-![image](https://user-images.githubusercontent.com/57614894/221923218-c9ab1171-9d59-4c5c-9565-ef924634b147.png)
 - resize : resizes the image (Default is width/2 height/2)
-![image](https://user-images.githubusercontent.com/57614894/221923348-511caf16-7347-493a-a8bc-eabe26334d4e.png)
+![image](https://user-images.githubusercontent.com/57614894/221923218-c9ab1171-9d59-4c5c-9565-ef924634b147.png)
 - photomaton : splits the image in 4 small ones
-![image](https://user-images.githubusercontent.com/57614894/221923446-f189a0d8-0d1f-4fa7-b5a5-7fb7aa8c713d.png)
+![image](https://user-images.githubusercontent.com/57614894/221923348-511caf16-7347-493a-a8bc-eabe26334d4e.png)
 - popart : Splits the image in 4 small ones and applies filters on each (Default filters are satR, blue, symetry and negative)
+![image](https://user-images.githubusercontent.com/57614894/221923446-f189a0d8-0d1f-4fa7-b5a5-7fb7aa8c713d.png)
