@@ -282,7 +282,7 @@ __global__ void resize(unsigned int* d_img, unsigned int* d_tmp, int width, int 
 }
 
 // Popart filter
-__global__ void popart(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
+__global__ void photomaton(unsigned int* d_img, unsigned int* d_tmp, int width, int height)
 {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -313,7 +313,7 @@ __global__ void popart(unsigned int* d_img, unsigned int* d_tmp, int width, int 
 int main (int argc , char** argv)
 {
   if(argc < 2)
-    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, resize, popart\n", argv[0]), 1;
+    return printf("USAGE: %s <FILTER 1> [<FILTER 2> ...]\n FILTERS = satR, sym, grey, blur, sobel, negative, blue, rotate, resize, photomaton, popart\n", argv[0]), 1;
 
   FreeImage_Initialise();
   const char *PathName = "img.jpg";
@@ -387,10 +387,8 @@ int main (int argc , char** argv)
         cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       }
     }
-    else if (strcmp(argv[i], "sobel") == 0){
-      grayscale<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+    else if (strcmp(argv[i], "sobel") == 0)
       sobel<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
-    }
     else if (strcmp(argv[i], "negative") == 0)
       negative<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
     else if (strcmp(argv[i], "blue") == 0)
@@ -405,16 +403,13 @@ int main (int argc , char** argv)
     }
     else if (strcmp(argv[i], "resize") == 0)
       resize<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height, width/2, height/2);
+    else if (strcmp(argv[i], "photomaton") == 0)
+      photomaton<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+
     else if (strcmp(argv[i], "popart") == 0){
       //
-      popart<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
+      resize<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height, width/2, height/2);
       cudaMemcpy(img, d_img, 3 * width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-
-      //Update threads 
-      nbBlocks.x /= 2;
-      nbBlocks.y /= 2;
-      nbBlocks.x++;
-      nbBlocks.y++;
 
       //Streams
       cudaStream_t streams[4];
@@ -469,7 +464,7 @@ int main (int argc , char** argv)
       cudaDeviceSynchronize();
 
       //Default filters applied
-      sobel<<<nbBlocks, nbThreadsPerBlock, 0, streams[0]>>>(d_topl, d_tmptl, height / 2, width / 2); //TOP LEFT
+      only_blue<<<nbBlocks, nbThreadsPerBlock, 0, streams[0]>>>(d_topl, d_tmptl, height / 2, width / 2); //TOP LEFT
       negative<<<nbBlocks, nbThreadsPerBlock, 0, streams[1]>>>(d_topr, d_tmptr, height / 2, width / 2); //TOP RIGHT
       saturation<<<nbBlocks, nbThreadsPerBlock, 0, streams[2]>>>(d_botl, d_tmpbl, height / 2, width / 2);  //BOT LEFT
       symetry<<<nbBlocks, nbThreadsPerBlock, 0, streams[3]>>>(d_botr, d_tmpbr, height / 2, width / 2);  //BOT RIGHT
@@ -478,6 +473,7 @@ int main (int argc , char** argv)
       cudaMemcpyAsync(topr, d_topr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToHost, streams[1]);
       cudaMemcpyAsync(botl, d_botl, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToHost, streams[2]);
       cudaMemcpyAsync(botr, d_botr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToHost, streams[3]);
+      cudaDeviceSynchronize();
 
       //Regroups
       for (int i = 0; i < height / 2; ++i){
