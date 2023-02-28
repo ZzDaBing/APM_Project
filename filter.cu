@@ -235,8 +235,8 @@ __global__ void only_blue(unsigned int* d_img, unsigned int* d_tmp, int width, i
   }
 }
 
-// Rotate 45
-__global__ void rotate45(unsigned int* d_img, unsigned int* d_tmp, int width, int height) {
+// Rotate 90
+__global__ void rotate90(unsigned int* d_img, unsigned int* d_tmp, int width, int height) {
   int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
   int idy = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -263,9 +263,10 @@ __global__ void resize(unsigned int* d_img, unsigned int* d_tmp, int width, int 
   }
 
   if (idx < new_width && idy < new_height) {
-    double scale = (double)new_width / (double)width;
-    int idx_2 = (int)((double)idx / scale);
-    int idy_2 = (int)((double)idy / scale);
+    double scale_width = (double)new_width / (double)width;
+    double scale_height = (double)new_height / (double)height;
+    int idx_2 = (int)((double)idx / scale_width);
+    int idy_2 = (int)((double)idy / scale_height);
 
     int ida_2 = (idy_2 * width + idx_2) * 3;
 

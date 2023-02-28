@@ -111,12 +111,8 @@ int main (int argc , char** argv)
     else if (strcmp(argv[i], "blue") == 0)
       only_blue<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
     else if (strcmp(argv[i], "rotate") == 0){
-      rotate45<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
-      // Not working with sizes exchange
-      // even if it would be logic
-      //unsigned tmp = width;
-      //width = height;
-      //height = tmp;
+      resize<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height, height, height);
+      rotate90<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height);
     }
     else if (strcmp(argv[i], "resize") == 0)
       resize<<<nbBlocks, nbThreadsPerBlock>>>(d_img, d_tmp, width, height, width/2, height/2);
