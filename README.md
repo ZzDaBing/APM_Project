@@ -16,6 +16,10 @@ Compilers :
 make
 ./modif_img <FLAGS/FILTER 1> [<FILTER 2> ...]
 ```
+
+Input image example :
+![image](https://user-images.githubusercontent.com/57614894/221928938-1536377f-6076-4851-a7ef-76ca9fce8216.png)
+
 Available flags: ``--help``
 
 --help : prints the usage and the flags/filters available
