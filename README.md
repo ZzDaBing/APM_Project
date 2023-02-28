@@ -14,7 +14,7 @@ Compilers :
 ## Run
 ```bash
 make
-./modif_img <FILTER 1> [<FILTER 2> ...]
+./modif_img <FLAGS/FILTER 1> [<FILTER 2> ...]
 ```
 Available flags: ``--help``
 
