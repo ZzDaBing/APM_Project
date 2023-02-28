@@ -41,6 +41,7 @@ Available filters: ``satR``, ``sym``, ``grey``, ``blur``, ``sobel``, ``negative`
 - blue : Sets red and green colors at 0
 ![image](https://user-images.githubusercontent.com/57614894/221923074-0a0ae5ea-f909-408d-bcec-fa08f16721e9.png)
 - rotate : rotates the image at 90 degree
+![image](https://user-images.githubusercontent.com/57614894/221999171-df743e94-7806-47a8-962b-f531759cc523.png)
 - resize : resizes the image (Default is width/2 height/2)
 ![image](https://user-images.githubusercontent.com/57614894/221923218-c9ab1171-9d59-4c5c-9565-ef924634b147.png)
 - photomaton : splits the image in 4 small ones
