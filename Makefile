@@ -1,12 +1,7 @@
 default: all
 
-all: cuda
-
-cuda:
-	nvcc -I${HOME}/softs/FreeImage/include -L${HOME}/softs/FreeImage/lib/ -lfreeimage -o modif_img modif_img.cu -lm
-
-cpp:
-	g++ -I${HOME}/softs/FreeImage/include modif_img.cpp -L${HOME}/softs/FreeImage/lib/ -lfreeimage -o modif_img
+all:
+	nvcc filter.cu -I${HOME}/softs/FreeImage/include modif_img.cu -L${HOME}/softs/FreeImage/lib/ -lfreeimage -o modif_img.exe
 
 clean:
-	rm -f *.o modif_img
+	rm -f *.o modif_img.exe
