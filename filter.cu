@@ -316,7 +316,7 @@ void popart(dim3 nbBlocks, dim3 nbThreadsPerBlock, unsigned int *img, unsigned i
     cudaStreamCreate(&streams[i]);
 
   //Small images
-  unsigned int *topl, *topr, *botl, *botr, *d_topl, *d_topr, *d_botl, *d_botr, *d_tmptl, *d_tmptr, *d_tmpbl, *d_tmpbr;
+  unsigned int *topl, *topr, *botl, *botr, *d_topl, *d_topr, *d_botl, *d_botr;
   topl = (unsigned int*) malloc(sizeof(unsigned int) * 3 * ((width * height) / 2));
   topr = (unsigned int*) malloc(sizeof(unsigned int) * 3 * ((width * height) / 2));
   botl = (unsigned int*) malloc(sizeof(unsigned int) * 3 * ((width * height) / 2));
@@ -325,10 +325,10 @@ void popart(dim3 nbBlocks, dim3 nbThreadsPerBlock, unsigned int *img, unsigned i
   cudaMalloc(&d_topr, sizeof(unsigned int) * 3 * ((width * height) / 2)); 
   cudaMalloc(&d_botl, sizeof(unsigned int) * 3 * ((width * height) / 2)); 
   cudaMalloc(&d_botr, sizeof(unsigned int) * 3 * ((width * height) / 2));
-  cudaMalloc(&d_tmptl, sizeof(unsigned int) * 3 * ((width * height) / 2));
-  cudaMalloc(&d_tmptr, sizeof(unsigned int) * 3 * ((width * height) / 2));
-  cudaMalloc(&d_tmpbl, sizeof(unsigned int) * 3 * ((width * height) / 2));
-  cudaMalloc(&d_tmpbr, sizeof(unsigned int) * 3 * ((width * height) / 2));
+  cudaMalloc(&d_tmp, sizeof(unsigned int) * 3 * ((width * height) / 2));
+  cudaMalloc(&d_tmp, sizeof(unsigned int) * 3 * ((width * height) / 2));
+  cudaMalloc(&d_tmp, sizeof(unsigned int) * 3 * ((width * height) / 2));
+  cudaMalloc(&d_tmp, sizeof(unsigned int) * 3 * ((width * height) / 2));
 
   //Splits
   for (int i = 0; i < height / 2; ++i){
@@ -356,17 +356,17 @@ void popart(dim3 nbBlocks, dim3 nbThreadsPerBlock, unsigned int *img, unsigned i
   cudaMemcpyAsync(d_topr, topr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyHostToDevice, streams[1]);
   cudaMemcpyAsync(d_botl, botl, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyHostToDevice, streams[2]);
   cudaMemcpyAsync(d_botr, botr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyHostToDevice, streams[3]);
-  cudaMemcpyAsync(d_tmptl, d_topl, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[0]);
-  cudaMemcpyAsync(d_tmptr, d_topr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[1]);
-  cudaMemcpyAsync(d_tmpbl, d_botl, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[2]);
-  cudaMemcpyAsync(d_tmpbr, d_botr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[3]);
+  cudaMemcpyAsync(d_tmp, d_topl, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[0]);
+  cudaMemcpyAsync(d_tmp, d_topr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[1]);
+  cudaMemcpyAsync(d_tmp, d_botl, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[2]);
+  cudaMemcpyAsync(d_tmp, d_botr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToDevice, streams[3]);
   //cudaDeviceSynchronize();
 
   //Default filters applied
-  only_blue<<<nbBlocks, nbThreadsPerBlock, 0, streams[0]>>>(d_topl, d_tmptl, height / 2, width / 2); //TOP LEFT
-  negative<<<nbBlocks, nbThreadsPerBlock, 0, streams[1]>>>(d_topr, d_tmptr, height / 2, width / 2); //TOP RIGHT
-  saturation<<<nbBlocks, nbThreadsPerBlock, 0, streams[2]>>>(d_botl, d_tmpbl, height / 2, width / 2);  //BOT LEFT
-  symetry<<<nbBlocks, nbThreadsPerBlock, 0, streams[3]>>>(d_botr, d_tmpbr, height / 2, width / 2);  //BOT RIGHT
+  only_blue<<<nbBlocks, nbThreadsPerBlock, 0, streams[0]>>>(d_topl, d_tmp, height / 2, width / 2); //TOP LEFT
+  negative<<<nbBlocks, nbThreadsPerBlock, 0, streams[1]>>>(d_topr, d_tmp, height / 2, width / 2); //TOP RIGHT
+  saturation<<<nbBlocks, nbThreadsPerBlock, 0, streams[2]>>>(d_botl, d_tmp, height / 2, width / 2);  //BOT LEFT
+  symetry<<<nbBlocks, nbThreadsPerBlock, 0, streams[3]>>>(d_botr, d_tmp, height / 2, width / 2);  //BOT RIGHT
 
   cudaMemcpyAsync(topl, d_topl, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToHost, streams[0]);
   cudaMemcpyAsync(topr, d_topr, 3 * ((width * height) / 2) * sizeof(unsigned int), cudaMemcpyDeviceToHost, streams[1]);
